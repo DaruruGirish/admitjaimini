@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .streamlit/secrets.toml
 generated/
+uploads/
 *.log
 .DS_Store
 Thumbs.db

@@ -14,17 +14,17 @@ from config import (
     EXAM_NAME,
     EXAM_SCHEDULE,
     HEADMISTRESS_LABEL,
-    HEADMISTRESS_NAME,
     LOGO_PATH,
     PHOTO_LABEL,
     SCHOOL_NAME,
+    SIGNATURE_PATH,
     STUDENT_SIGN_LABEL,
     TEACHER_SIGN_LABEL,
     WINDOWS_SCRIPT,
     WINDOWS_SERIF_BOLD,
     WINDOWS_SERIF_REGULAR,
 )
-from utils.logo import prepare_print_logo
+from utils.logo import prepare_print_logo, prepare_print_signature
 from services.excel_reader import RawStudent
 
 PAGE_WIDTH, PAGE_HEIGHT = A4
@@ -50,6 +50,7 @@ def register_fonts() -> None:
     if _FONTS_READY:
         return
     prepare_print_logo()
+    prepare_print_signature()
     if WINDOWS_SERIF_REGULAR.exists() and WINDOWS_SERIF_BOLD.exists():
         pdfmetrics.registerFont(TTFont("SchoolSerif", str(WINDOWS_SERIF_REGULAR)))
         pdfmetrics.registerFont(TTFont("SchoolSerif-Bold", str(WINDOWS_SERIF_BOLD)))
@@ -169,59 +170,64 @@ def draw_admit_card(
     inner_top = y + height - pad
     inner_width = width - (pad * 2)
 
-    logo_size = 62.0
+    col_fracs = (0.09, 0.145, 0.17, 0.215, 0.20, 0.18)
+    col_widths = [inner_width * frac for frac in col_fracs]
+    invigilator_left = inner_left + sum(col_widths[:5])
+
+    logo_size = 48.0
     logo_x = inner_left + 1
-    logo_y = inner_top - logo_size + 2
+    logo_y = inner_top - logo_size
     _draw_logo(canvas, logo_x, logo_y, logo_size)
 
     center_x = x + (width / 2.0)
-    school_size = 17.0
+    school_size = 17.4
     school_width = canvas.stringWidth(SCHOOL_NAME, FONT_BOLD, school_size)
-    max_school_width = inner_width - logo_size - 12
+    max_school_width = inner_width - logo_size - 16
     if school_width > max_school_width:
         school_size = _fit_font_size(
             canvas, SCHOOL_NAME, FONT_BOLD, school_size, 11.0, max_school_width
         )
-    _draw_centered(canvas, SCHOOL_NAME, center_x, inner_top - 18, FONT_BOLD, school_size)
+    _draw_centered(canvas, SCHOOL_NAME, center_x, inner_top - 16, FONT_BOLD, school_size)
 
-    exam_size = 10.8
+    exam_size = 11.2
     exam_gap = 16.0
     exam_width = canvas.stringWidth(EXAM_NAME, FONT_BOLD, exam_size)
     year_width = canvas.stringWidth(ACADEMIC_YEAR, FONT_BOLD, exam_size)
     exam_total = exam_width + exam_gap + year_width
     exam_start = center_x - (exam_total / 2.0)
     canvas.setFont(FONT_BOLD, exam_size)
-    canvas.drawString(exam_start, inner_top - 34, EXAM_NAME)
-    canvas.drawString(exam_start + exam_width + exam_gap, inner_top - 34, ACADEMIC_YEAR)
+    canvas.drawString(exam_start, inner_top - 31, EXAM_NAME)
+    canvas.drawString(exam_start + exam_width + exam_gap, inner_top - 31, ACADEMIC_YEAR)
 
-    _draw_centered(canvas, CARD_TITLE, center_x, inner_top - 50, FONT_BOLD, 13.6)
+    _draw_centered(canvas, CARD_TITLE, center_x, inner_top - 46, FONT_BOLD, 14.0)
 
-    photo_size = 66.0
-    photo_x = inner_right - photo_size
-    details_top = inner_top - 58
-    photo_y = details_top - photo_size
+    details_top = logo_y - 7
+    table_h = 54.0
+    table_x = inner_left
+    table_w = invigilator_left - table_x
+    table_y = details_top - table_h
+    photo_x = invigilator_left
+    photo_w = inner_right - photo_x
+    photo_y = table_y
+    row_h = table_h / 3.0
+
     canvas.setLineWidth(1.15)
-    canvas.rect(photo_x, photo_y, photo_size, photo_size, stroke=1, fill=0)
+    canvas.rect(photo_x, photo_y, photo_w, table_h, stroke=1, fill=0)
     _draw_centered(
         canvas,
         PHOTO_LABEL,
-        photo_x + (photo_size / 2.0),
-        photo_y + (photo_size / 2.0) - 3.5,
+        photo_x + (photo_w / 2.0),
+        photo_y + (table_h / 2.0) - 3.5,
         FONT_REGULAR,
-        8.2,
+        9.0,
     )
 
-    table_x = inner_left
-    table_w = photo_x - table_x - 8
-    table_h = photo_size
-    table_y = photo_y
-    row_h = table_h / 3.0
     canvas.setLineWidth(1.0)
     canvas.rect(table_x, table_y, table_w, table_h, stroke=1, fill=0)
     canvas.line(table_x, table_y + row_h, table_x + table_w, table_y + row_h)
     canvas.line(table_x, table_y + (row_h * 2), table_x + table_w, table_y + (row_h * 2))
 
-    label_font_size = 10.3
+    label_font_size = 11.2
     canvas.setFont(FONT_BOLD, label_font_size)
     label_width = canvas.stringWidth("Roll No.", FONT_BOLD, label_font_size)
     label_x = table_x + 8
@@ -249,14 +255,12 @@ def draw_admit_card(
             value_width,
             row_h,
             FONT_BOLD,
-            10.6,
+            11.5,
         )
 
-    timetable_top = table_y - 10
-    timetable_bottom = y + 52
+    timetable_top = table_y - 8
+    timetable_bottom = y + 78
     timetable_h = timetable_top - timetable_bottom
-    col_fracs = (0.09, 0.145, 0.17, 0.215, 0.20, 0.18)
-    col_widths = [inner_width * frac for frac in col_fracs]
     headers = ["Sl. No.", "Date", "Subject", "Written Exam", "Oral Exam", "Invigilator Sign."]
     rows = [headers] + [
         [item["sl_no"], item["date"], item["subject"], item["written"], item["oral"], ""]
@@ -280,7 +284,7 @@ def draw_admit_card(
         row_top = timetable_top - (row_index * exam_row_h)
         row_bottom = row_top - exam_row_h
         font = FONT_BOLD if row_index == 0 else FONT_REGULAR
-        size = 8.6 if row_index == 0 else 8.15
+        size = 9.5 if row_index == 0 else 9.0
         canvas.setFont(font, size)
         cell_x = inner_left
         for col_index, (cell, col_w) in enumerate(zip(row, col_widths)):
@@ -294,10 +298,10 @@ def draw_admit_card(
             canvas.drawCentredString(cell_x + (col_w / 2.0), text_y, cell)
             cell_x += col_w
 
-    sign_y = y + 28
-    line_y = sign_y + 12
-    sign_width = 92
-    left_line_x = inner_left + 18
+    sign_y = y + 14
+    line_y = y + 26
+    sign_width = 110
+    left_line_x = inner_left + 12
     canvas.setLineWidth(1.0)
     canvas.line(left_line_x, line_y, left_line_x + sign_width, line_y)
     _draw_centered(
@@ -306,19 +310,32 @@ def draw_admit_card(
         left_line_x + (sign_width / 2.0),
         sign_y,
         FONT_REGULAR,
-        8.1,
+        8.8,
     )
 
     teacher_center = center_x - 8
     canvas.line(teacher_center - (sign_width / 2.0), line_y, teacher_center + (sign_width / 2.0), line_y)
-    _draw_centered(canvas, TEACHER_SIGN_LABEL, teacher_center, sign_y, FONT_REGULAR, 8.1)
+    _draw_centered(canvas, TEACHER_SIGN_LABEL, teacher_center, sign_y, FONT_REGULAR, 8.8)
 
-    script_size = 15.5
-    canvas.setFont(FONT_SCRIPT, script_size)
-    canvas.drawRightString(inner_right - 4, line_y - 1, HEADMISTRESS_NAME)
-    canvas.setFont(FONT_REGULAR, 8.1)
-    head_label_width = canvas.stringWidth(HEADMISTRESS_LABEL, FONT_REGULAR, 8.1)
-    canvas.drawString(inner_right - 4 - head_label_width, sign_y, HEADMISTRESS_LABEL)
+    canvas.setFont(FONT_REGULAR, 8.8)
+    head_label_width = canvas.stringWidth(HEADMISTRESS_LABEL, FONT_REGULAR, 8.8)
+    head_label_x = inner_right - 2 - head_label_width
+    canvas.drawString(head_label_x, sign_y, HEADMISTRESS_LABEL)
+
+    sig_path = Path(SIGNATURE_PATH)
+    if sig_path.exists():
+        sig_w = 126.0
+        sig_h = 32.0
+        canvas.drawImage(
+            str(sig_path),
+            inner_right - 2 - sig_w,
+            sign_y + 11,
+            width=sig_w,
+            height=sig_h,
+            mask="auto",
+            preserveAspectRatio=True,
+            anchor="c",
+        )
 
     canvas.restoreState()
 

@@ -57,7 +57,9 @@ def build_sample_workbook(path: str | Path, include_issues: str | None = None) -
     elif include_issues == "missing_roll":
         class1.append(["", "MISSING ROLL", 1])
     elif include_issues == "missing_grade":
-        class1.append(["JPS260198", "MISSING GRADE", ""])
+        roster = workbook.create_sheet("Roster")
+        roster.append(["Roll No", "Name", "Grade"])
+        roster.append(["JPS260198", "MISSING GRADE", ""])
     elif include_issues == "duplicate_roll":
         class3.append(["JPS260301", "DUPLICATE STUDENT", 3])
     elif include_issues == "missing_columns":

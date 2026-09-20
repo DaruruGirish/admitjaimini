@@ -4,6 +4,8 @@ BASE_DIR = Path(__file__).resolve().parent
 ASSETS_DIR = BASE_DIR / "assets"
 LOGO_PATH = ASSETS_DIR / "school_logo.png"
 COLOR_LOGO_PATH = ASSETS_DIR / "school_logo_color.png"
+SIGNATURE_SOURCE_PATH = ASSETS_DIR / "headmistress_signature_source.png"
+SIGNATURE_PATH = ASSETS_DIR / "headmistress_signature.png"
 
 SCHOOL_NAME = "JAIMINI PUBLIC SCHOOL, HIRIYUR."
 EXAM_NAME = "SUMMATIVE ASSESSMENT (SA) - 1"

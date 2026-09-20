@@ -8,17 +8,8 @@ import pypdfium2 as pdfium
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas as pdf_canvas
 
+from templates import admit_card_template as card_template
 from services.excel_reader import RawStudent
-from templates.admit_card_template import (
-    CARD_HEIGHT,
-    CARD_WIDTH,
-    CUT_GAP,
-    PAGE_MARGIN_X,
-    PAGE_MARGIN_Y,
-    draw_admit_card,
-    draw_cut_line,
-    register_fonts,
-)
 
 
 @dataclass
@@ -37,28 +28,42 @@ def _page_count(student_count: int) -> int:
 
 
 def render_class_pdf(grade: str, students: list[RawStudent]) -> GeneratedPDF:
-    register_fonts()
+    card_template.register_fonts()
     buffer = BytesIO()
     pdf = pdf_canvas.Canvas(buffer, pagesize=A4)
     pdf.setTitle(f"Admit Cards Class {grade}")
     pdf.setAuthor("Jaimini Public School, Hiriyur")
 
-    top_card_y = PAGE_MARGIN_Y + CARD_HEIGHT + CUT_GAP
-    bottom_card_y = PAGE_MARGIN_Y
-    cut_y = PAGE_MARGIN_Y + CARD_HEIGHT + (CUT_GAP / 2.0)
+    top_card_y = card_template.PAGE_MARGIN_Y + card_template.CARD_HEIGHT + card_template.CUT_GAP
+    bottom_card_y = card_template.PAGE_MARGIN_Y
+    cut_y = card_template.PAGE_MARGIN_Y + card_template.CARD_HEIGHT + (card_template.CUT_GAP / 2.0)
 
     for index in range(0, len(students), 2):
         first = students[index]
-        draw_admit_card(pdf, first, PAGE_MARGIN_X, top_card_y, CARD_WIDTH, CARD_HEIGHT)
-        draw_cut_line(
+        card_template.draw_admit_card(
+            pdf,
+            first,
+            card_template.PAGE_MARGIN_X,
+            top_card_y,
+            card_template.CARD_WIDTH,
+            card_template.CARD_HEIGHT,
+        )
+        card_template.draw_cut_line(
             pdf,
             cut_y,
-            PAGE_MARGIN_X,
-            PAGE_MARGIN_X + CARD_WIDTH,
+            card_template.PAGE_MARGIN_X,
+            card_template.PAGE_MARGIN_X + card_template.CARD_WIDTH,
         )
         if index + 1 < len(students):
             second = students[index + 1]
-            draw_admit_card(pdf, second, PAGE_MARGIN_X, bottom_card_y, CARD_WIDTH, CARD_HEIGHT)
+            card_template.draw_admit_card(
+                pdf,
+                second,
+                card_template.PAGE_MARGIN_X,
+                bottom_card_y,
+                card_template.CARD_WIDTH,
+                card_template.CARD_HEIGHT,
+            )
         pdf.showPage()
 
     pdf.save()
@@ -77,10 +82,14 @@ def generate_class_pdfs(grouped: dict[str, list[RawStudent]]) -> list[GeneratedP
 
 
 def render_single_card_pdf(student: RawStudent) -> bytes:
-    register_fonts()
+    card_template.register_fonts()
     buffer = BytesIO()
-    pdf = pdf_canvas.Canvas(buffer, pagesize=(CARD_WIDTH, CARD_HEIGHT))
-    draw_admit_card(pdf, student, 0, 0, CARD_WIDTH, CARD_HEIGHT)
+    pdf = pdf_canvas.Canvas(
+        buffer, pagesize=(card_template.CARD_WIDTH, card_template.CARD_HEIGHT)
+    )
+    card_template.draw_admit_card(
+        pdf, student, 0, 0, card_template.CARD_WIDTH, card_template.CARD_HEIGHT
+    )
     pdf.save()
     return buffer.getvalue()
 
