@@ -8,6 +8,7 @@ from services.pdf_generator import (
     extract_pdf_text,
     generate_class_pdfs,
     render_class_pdf,
+    render_manual_student_pdf,
     render_preview_png,
     render_single_card_pdf,
 )
@@ -48,6 +49,23 @@ def test_a4_portrait_and_schedule_content():
     assert "Drawing/ PE" in text
     assert "10:30AM to 12:00PM" in text
     assert "ADMIT CARD" in text
+    from pypdfium2 import PdfDocument
+
+    document = PdfDocument(pdf.data)
+    width, height = document[0].get_size()
+    document.close()
+    assert abs(width - A4[0]) < 1
+    assert abs(height - A4[1]) < 1
+
+
+def test_manual_student_pdf_is_one_a4_card():
+    pdf = render_manual_student_pdf("AMITH A", "JPS260301", "5th")
+    text = extract_pdf_text(pdf.data)
+    assert pdf.student_count == 1
+    assert pdf.page_count == 1
+    assert pdf.filename == "Admit_Card_5_JPS260301.pdf"
+    assert text.count("AMITH A") == 1
+    assert "JPS260301" in text
     from pypdfium2 import PdfDocument
 
     document = PdfDocument(pdf.data)

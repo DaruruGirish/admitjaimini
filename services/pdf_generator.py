@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, replace
 from io import BytesIO
 from math import ceil
 
@@ -10,6 +11,7 @@ from reportlab.pdfgen import canvas as pdf_canvas
 
 from templates import admit_card_template as card_template
 from services.excel_reader import RawStudent
+from utils.formatting import clean_cell, normalize_grade
 
 
 @dataclass
@@ -79,6 +81,24 @@ def render_class_pdf(grade: str, students: list[RawStudent]) -> GeneratedPDF:
 
 def generate_class_pdfs(grouped: dict[str, list[RawStudent]]) -> list[GeneratedPDF]:
     return [render_class_pdf(grade, students) for grade, students in grouped.items()]
+
+
+def _safe_filename_part(value: str) -> str:
+    cleaned = re.sub(r"[^\w.-]+", "_", value.strip())
+    return cleaned.strip("._") or "student"
+
+
+def render_manual_student_pdf(name: str, roll_no: str, grade: str) -> GeneratedPDF:
+    student = RawStudent(
+        name=clean_cell(name),
+        roll_no=clean_cell(roll_no),
+        grade=normalize_grade(grade),
+        sheet="manual",
+        row=1,
+    )
+    pdf = render_class_pdf(student.grade, [student])
+    filename = f"Admit_Card_{_safe_filename_part(student.grade)}_{_safe_filename_part(student.roll_no)}.pdf"
+    return replace(pdf, filename=filename)
 
 
 def render_single_card_pdf(student: RawStudent) -> bytes:

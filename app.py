@@ -22,12 +22,12 @@ importlib.reload(validator)
 importlib.reload(student_processor)
 importlib.reload(pdf_generator)
 
-from services.pdf_generator import generate_class_pdfs, render_preview_png
+from services.pdf_generator import generate_class_pdfs, pdf_to_png, render_manual_student_pdf, render_preview_png
 from services.excel_reader import read_workbook
 from services.student_processor import class_summary, group_students
 from services.validator import validate_workbook
 
-LAYOUT_VERSION = "student-count-v6"
+LAYOUT_VERSION = "manual-entry-v1"
 if st.session_state.get("layout_version") != LAYOUT_VERSION:
     st.session_state.pop("generated", None)
     st.session_state.layout_version = LAYOUT_VERSION
@@ -51,6 +51,12 @@ st.markdown(
 st.title("School Admit Card Generator")
 st.caption("Jaimini Public School, Hiriyur — print-ready A4 admit cards (two per page).")
 
+mode = st.radio(
+    "Create admit cards from",
+    ("Excel workbook", "Missed student (manual entry)"),
+    horizontal=True,
+)
+
 
 def _store_upload(uploaded) -> None:
     st.session_state.workbook_bytes = uploaded.getvalue()
@@ -59,6 +65,45 @@ def _store_upload(uploaded) -> None:
     st.session_state.pop("preview_png", None)
     st.session_state.pop("preview_student", None)
 
+
+if mode == "Missed student (manual entry)":
+    st.subheader("Manual admit card")
+    st.caption("Enter one missed student. The PDF is one A4 page: the top card is filled and the bottom half stays empty.")
+    with st.form("manual_student_form"):
+        roll_no = st.text_input("Roll No", placeholder="JPS260501")
+        name = st.text_input("Name", placeholder="STUDENT NAME")
+        grade = st.text_input("Class / Grade", placeholder="5")
+        submitted = st.form_submit_button("Generate admit card", type="primary")
+
+    if submitted:
+        missing = [
+            label
+            for label, value in (("Roll No", roll_no), ("Name", name), ("Class / Grade", grade))
+            if not str(value).strip()
+        ]
+        if missing:
+            st.error(f"Please enter {', '.join(missing)}.")
+            st.session_state.pop("manual_pdf", None)
+            st.session_state.pop("manual_preview", None)
+        else:
+            pdf = render_manual_student_pdf(name, roll_no, grade)
+            st.session_state.manual_pdf = pdf
+            st.session_state.manual_preview = pdf_to_png(pdf.data, scale=1.8)
+
+    manual_pdf = st.session_state.get("manual_pdf")
+    if manual_pdf:
+        preview = st.session_state.get("manual_preview")
+        if preview:
+            st.image(preview, width="stretch")
+        st.download_button(
+            "Download PDF",
+            data=manual_pdf.data,
+            file_name=manual_pdf.filename,
+            mime="application/pdf",
+            type="primary",
+        )
+        st.caption(f"{manual_pdf.filename} — 1 student, 1 A4 page, bottom half empty.")
+    st.stop()
 
 uploaded = st.file_uploader(
     "STEP 1 — Upload Excel Workbook",
@@ -74,7 +119,7 @@ if workbook_bytes:
     upload_dir.mkdir(exist_ok=True)
     (upload_dir / "last.xlsx").write_bytes(workbook_bytes)
 if not workbook_bytes:
-    st.info("Upload a workbook to detect classes and generate admit cards.")
+    st.info("Upload a workbook, or switch to **Missed student (manual entry)** to type one card.")
     st.stop()
 
 st.subheader("STEP 2 — Validate Workbook")
